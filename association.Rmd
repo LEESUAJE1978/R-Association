@@ -1,0 +1,128 @@
+---
+title: "association"
+author: "LEESUJAE"
+date: "2018<eb>뀈 3<ec>썡 19<ec>씪"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+#1.library 설치하기
+```{r library}
+library(data.table)
+library(arules)
+library(datasets)
+library(dplyr)
+library(arulesViz)
+```
+
+#2.Data 불러오기:캐글 데이터 활용
+#kaggle https://www.kaggle.com/psparks/instacart-market-basket-analysis/data Instacart Market Basket Analysis
+
+```{r file load}
+aisles<-read.csv("aisles.csv")
+dept<-read.csv("departments.csv")
+products<-read.csv("products.csv")
+orders<-fread("order_products__prior.csv") 
+```
+
+#3. 상품 정보에 색션, 카테고리 정보를 병합
+
+```{r product info 병합}
+TolData<-merge(merge(products, aisles, all.x = T, by= "aisle_id"), dept, all.x= T, by="department_id")
+```
+#4. 상품명과 카테고리명을 통합해 가장 많이 구매하는 상품정보를 확인
+```{r }
+TolData<-as.data.table(TolData) 
+setkey(TolData,"product_id")
+setkey(orders,"product_id")
+Data_master<-orders[TolData, nomatch=0]
+head(Data_master)
+```
+
+#5. 연관 분석을 위한 데이터 형태로 변형, 용량 이슈로 100,000개 데이터 추출
+```{r}
+Data_master1<-Data_master[1:100000] 
+Data_master2<-split(Data_master1$aisle, Data_master1$order_id)
+Data_master_trans<-as(Data_master2,"transactions")
+inspect(Data_master_trans)
+```
+
+#6. 데이터 특성 확인
+```{r}
+summary(Data_master_trans)
+```
+
+#6. 데이터 특성 확인
+```{r}
+Data_master_trans@itemInfo 
+```
+
+#6. 데이터 특성 확인
+```{r}
+Data_master_trans@itemsetInfo
+```
+
+#7. 품목 빈도수 확인_빈도수
+```{r}
+itemFrequency(Data_master_trans,type ='absolute')
+```
+
+#7. 품목 빈도수 확인_비율
+```{r}
+itemFrequency(Data_master_trans,type ='relative')
+```
+
+#8.품목 빈도수 시각화_빈도수
+```{r}
+itemFrequencyPlot(Data_master_trans,topN=30, type="absolute")
+```
+
+#8. 품목 빈도수 시각화 _비유
+```{r}
+itemFrequencyPlot(Data_master_trans,topN=30, type="relative")
+```
+
+#9. 연관분석_support 0.00005, conf=0.00005 수주
+```{r}
+rules<- apriori(Data_master_trans, parameter = list(supp= 0.00005, conf =0.00005, minlen = 2))
+inspect(head(sort(rules, by="support", decreasing = TRUE),10))
+```
+
+#9.연관분석: support 0.0005, conf = 0.00005
+```{r}
+rules1<- apriori(Data_master_trans, parameter = list(supp= 0.0005, conf =0.00005, minlen = 2))
+inspect(head(sort(rules1, by="support", decreasing = TRUE),15))
+```
+
+
+#10. 연관성 시각화_scatter plot for 14rules
+```{r}
+plot(rules1)
+```
+
+#10. 연관성 시각화_scatter plot for 14rules
+```{r}
+plot(rules1, method = "grouped")
+```
+
+#10. 연관성 시각화 _인터렉티브 표현
+```{r}
+plot(rules1, method = "graph", engine='interactive')
+```
+
+#10. 연관성 시각화_위젯표혀
+```{r}
+plot(rules1, method = "graph", engine='htmlwidget')
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
